@@ -18,7 +18,7 @@ class RunnerTests(unittest.TestCase):
         command = runner.command_for(self.schedule.assignments[0])
         self.assertIn("--models", command)
         expected = ",".join(
-            self.registry.get(self.schedule.assignments[0].assignments[power]).model
+            self.registry.get(self.schedule.assignments[0].assignments[power]).upstream_model_id()
             for power in ("AUSTRIA", "ENGLAND", "FRANCE", "GERMANY", "ITALY", "RUSSIA", "TURKEY")
         )
         self.assertEqual(expected, command[command.index("--models") + 1])

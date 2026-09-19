@@ -35,6 +35,13 @@ class LabConfig:
             metadata=dict(values.get("metadata") or {}),
         )
 
+    def upstream_model_id(self) -> str:
+        """Return the explicit provider-prefixed ID understood by upstream clients."""
+        provider = {"google": "gemini", "xai": "openrouter", "meta": "openrouter"}.get(self.provider, self.provider)
+        if self.model.lower().startswith(provider.lower() + ":"):
+            return self.model
+        return f"{provider}:{self.model}"
+
 
 class LabRegistry:
     def __init__(self, labs: list[LabConfig]):

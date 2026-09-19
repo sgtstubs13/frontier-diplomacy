@@ -771,6 +771,34 @@ if __name__ == '__main__':
     asyncio.run(launch(game_id=str(random.randint(1, 1000))))
 ```
 
+## Frontier Diplomacy League
+
+This fork adds a configuration-driven league layer around the existing engine.
+The league keeps lab identity separate from exact model IDs, generates seeded
+balanced assignments, and records season metadata for reproducibility.
+
+```bash
+# Install the project dependencies in a Python 3.13 environment
+pip install -e .
+
+# Inspect configured labs (replace MODEL_ID values before paid runs)
+frontier-diplomacy labs
+
+# Generate and validate a balanced season
+frontier-diplomacy schedule --games 3 --seed 42 --output results/season-001/schedule.json
+frontier-diplomacy validate-schedule results/season-001/schedule.json
+
+# Dry-run or execute one scheduled game through the upstream runner
+frontier-diplomacy run-game --schedule results/season-001/schedule.json \
+  --game league-0001 --season-dir results/season-001 --repo-root . --dry-run
+
+# Aggregate completed immutable game artifacts
+frontier-diplomacy analyze --season-dir results/season-001
+```
+
+Set provider API keys in a local `.env` file; never commit secrets. The default
+league config uses placeholders so no paid API call can happen accidentally.
+
 ## License
 
 Copyright (C) 2025 Good Start Labs

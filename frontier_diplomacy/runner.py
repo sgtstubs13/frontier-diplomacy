@@ -61,7 +61,7 @@ class SeasonRunner:
         }
 
     def command_for(self, game: GameAssignment, max_year: int = 1910, negotiation_rounds: int = 2) -> list[str]:
-        models = ",".join(self.registry.get(game.assignments[power]).model for power in game.assignments)
+        models = ",".join(self.registry.get(game.assignments[power]).upstream_model_id() for power in game.assignments)
         return [
             sys.executable,
             "lm_game.py",
