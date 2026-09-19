@@ -7,7 +7,7 @@ from pathlib import Path
 from .registry import LabRegistry
 from .runner import SeasonRunner, load_schedule
 from .analytics import analyze_season
-from .scheduler import GameAssignment, SeasonSchedule, generate_schedule, validate_schedule
+from .scheduler import GameAssignment, SeasonSchedule, balance_report, generate_schedule, validate_schedule
 
 
 def main() -> None:
@@ -72,6 +72,10 @@ def main() -> None:
                 print(error)
             raise SystemExit(1)
         print(f"valid: {len(loaded.assignments)} games")
+        report = balance_report(loaded)
+        print(f"lab appearances: {report['ranges']['lab_appearances'][0]}-{report['ranges']['lab_appearances'][1]}")
+        print(f"lab/power cells: {report['ranges']['lab_power_assignments'][0]}-{report['ranges']['lab_power_assignments'][1]}")
+        print(f"pairwise encounters: {report['pairwise_encounters']['min']}-{report['pairwise_encounters']['max']}")
     else:
         schedule = load_schedule(args.schedule)
         runner = SeasonRunner(registry, schedule, args.season_dir, args.repo_root)

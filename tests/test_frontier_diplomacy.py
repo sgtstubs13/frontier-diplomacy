@@ -4,7 +4,7 @@ import unittest
 from pathlib import Path
 
 from frontier_diplomacy.registry import LabConfig, LabRegistry
-from frontier_diplomacy.scheduler import generate_schedule, validate_schedule
+from frontier_diplomacy.scheduler import balance_report, generate_schedule, validate_schedule
 
 
 def registry(count=10):
@@ -30,6 +30,9 @@ class SchedulerTests(unittest.TestCase):
         for game in first.assignments:
             self.assertEqual(7, len(game.assignments))
             self.assertEqual(7, len(set(game.assignments.values())))
+        report = balance_report(first)
+        appearance_range = report["ranges"]["lab_appearances"]
+        self.assertLessEqual(appearance_range[1] - appearance_range[0], 2)
 
     def test_different_seed_changes_schedule(self):
         self.assertNotEqual(generate_schedule(registry(), 4, 1).to_dict(), generate_schedule(registry(), 4, 2).to_dict())

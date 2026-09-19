@@ -91,3 +91,31 @@ def validate_schedule(schedule: SeasonSchedule, expected_labs: Iterable[str] = (
         if expected and not set(labs).issubset(expected):
             errors.append(f"{game.game_id}: unknown lab assignment")
     return errors
+
+
+def balance_report(schedule: SeasonSchedule) -> dict:
+    """Return inspectable balance diagnostics for a generated schedule."""
+    appearances = Counter()
+    power_counts = defaultdict(Counter)
+    pair_counts = Counter()
+    for game in schedule.assignments:
+        selected = list(game.assignments.values())
+        for power, lab in game.assignments.items():
+            appearances[lab] += 1
+            power_counts[lab][power] += 1
+        for index, left in enumerate(selected):
+            for right in selected[index + 1 :]:
+                pair_counts[tuple(sorted((left, right)))] += 1
+    appearance_values = list(appearances.values())
+    power_values = [value for counts in power_counts.values() for value in counts.values()]
+    pair_values = list(pair_counts.values())
+    return {
+        "games": len(schedule.assignments),
+        "appearances_by_lab": dict(sorted(appearances.items())),
+        "power_assignments_by_lab": {lab: dict(sorted(counts.items())) for lab, counts in sorted(power_counts.items())},
+        "pairwise_encounters": {"min": min(pair_values, default=0), "max": max(pair_values, default=0)},
+        "ranges": {
+            "lab_appearances": [min(appearance_values, default=0), max(appearance_values, default=0)],
+            "lab_power_assignments": [min(power_values, default=0), max(power_values, default=0)],
+        },
+    }
