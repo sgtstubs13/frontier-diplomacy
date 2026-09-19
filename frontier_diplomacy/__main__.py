@@ -6,6 +6,7 @@ from pathlib import Path
 
 from .registry import LabRegistry
 from .runner import SeasonRunner, load_schedule
+from .analytics import analyze_season
 from .scheduler import GameAssignment, SeasonSchedule, generate_schedule, validate_schedule
 
 
@@ -39,7 +40,20 @@ def main() -> None:
     run_season.add_argument("--config", default="config/labs.yaml")
     run_season.add_argument("--dry-run", action="store_true")
     run_season.add_argument("--force", action="store_true")
+
+    analyze = subparsers.add_parser("analyze", help="calculate transparent standings from completed artifacts")
+    analyze.add_argument("--season-dir", required=True)
+    analyze.add_argument("--output")
     args = parser.parse_args()
+    if args.command == "analyze":
+        result = analyze_season(args.season_dir)
+        rendered = json.dumps(result, indent=2) + "\n"
+        if args.output:
+            Path(args.output).write_text(rendered, encoding="utf-8")
+        else:
+            print(rendered, end="")
+        return
+
     registry = LabRegistry.from_file(args.config)
     if args.command == "labs":
         for lab in registry.all():

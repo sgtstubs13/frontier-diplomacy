@@ -13,6 +13,7 @@ import sys
 from datetime import datetime, timezone
 
 from .registry import LabRegistry
+from .persistence import create_manifest
 from .scheduler import GameAssignment, SeasonSchedule
 
 
@@ -40,6 +41,8 @@ class SeasonRunner:
         self.season_dir = Path(season_dir)
         self.repo_root = Path(repo_root)
         self.games_dir = self.season_dir / "games"
+        if not (self.season_dir / "manifest.json").exists():
+            create_manifest(self.season_dir, registry, schedule, self.repo_root)
 
     def _metadata(self, game: GameAssignment) -> dict:
         return {
