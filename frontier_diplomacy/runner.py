@@ -77,7 +77,7 @@ class SeasonRunner:
             str(game.seed),
         ]
 
-    def run_game(self, game_id: str, *, force: bool = False, dry_run: bool = False, max_year: int = 1910, negotiation_rounds: int = 2) -> GameRun:
+    def run_game(self, game_id: str, *, force: bool = False, dry_run: bool = False, allow_placeholders: bool = False, max_year: int = 1910, negotiation_rounds: int = 2) -> GameRun:
         game = next((item for item in self.schedule.assignments if item.game_id == game_id), None)
         if game is None:
             raise KeyError(f"Unknown game: {game_id}")
@@ -92,6 +92,8 @@ class SeasonRunner:
         command = self.command_for(game, max_year, negotiation_rounds)
         if dry_run:
             return GameRun(game.game_id, directory, "planned", None)
+        if not allow_placeholders and any(self.registry.get(lab).model.strip().upper() == "MODEL_ID" for lab in game.assignments.values()):
+            raise ValueError("Refusing to start a paid game while a lab still uses model placeholder MODEL_ID")
         started = datetime.now(timezone.utc).isoformat()
         completed = subprocess.run(command, cwd=self.repo_root, capture_output=True, text=True, check=False)
         (directory / "runner.stdout.log").write_text(completed.stdout, encoding="utf-8")

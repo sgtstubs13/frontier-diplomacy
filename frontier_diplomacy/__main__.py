@@ -7,6 +7,7 @@ from pathlib import Path
 from .registry import LabRegistry
 from .runner import SeasonRunner, load_schedule
 from .analytics import analyze_season
+from .doctor import check_registry
 from .scheduler import GameAssignment, SeasonSchedule, balance_report, generate_schedule, validate_schedule
 
 
@@ -32,6 +33,7 @@ def main() -> None:
     run_game.add_argument("--config", default="config/labs.yaml")
     run_game.add_argument("--dry-run", action="store_true")
     run_game.add_argument("--force", action="store_true")
+    run_game.add_argument("--allow-placeholders", action="store_true", help="allow MODEL_ID placeholders (unsafe; normally use --dry-run)")
 
     run_season = subparsers.add_parser("run-season", help="run or resume all scheduled games")
     run_season.add_argument("--schedule", required=True)
@@ -40,10 +42,15 @@ def main() -> None:
     run_season.add_argument("--config", default="config/labs.yaml")
     run_season.add_argument("--dry-run", action="store_true")
     run_season.add_argument("--force", action="store_true")
+    run_season.add_argument("--allow-placeholders", action="store_true", help="allow MODEL_ID placeholders (unsafe; normally use --dry-run)")
 
     analyze = subparsers.add_parser("analyze", help="calculate transparent standings from completed artifacts")
     analyze.add_argument("--season-dir", required=True)
     analyze.add_argument("--output")
+
+    doctor = subparsers.add_parser("doctor", help="check lab models, providers, and optional API keys")
+    doctor.add_argument("--config", default="config/labs.yaml")
+    doctor.add_argument("--require-keys", action="store_true")
     args = parser.parse_args()
     if args.command == "analyze":
         result = analyze_season(args.season_dir)
@@ -55,6 +62,13 @@ def main() -> None:
         return
 
     registry = LabRegistry.from_file(args.config)
+    if args.command == "doctor":
+        issues = check_registry(registry, require_keys=args.require_keys)
+        if issues:
+            print("\n".join(issues))
+            raise SystemExit(1)
+        print("configuration passed preflight")
+        return
     if args.command == "labs":
         for lab in registry.all():
             state = "enabled" if lab.enabled else "disabled"
@@ -80,10 +94,10 @@ def main() -> None:
         schedule = load_schedule(args.schedule)
         runner = SeasonRunner(registry, schedule, args.season_dir, args.repo_root)
         if args.command == "run-game":
-            result = runner.run_game(args.game, dry_run=args.dry_run, force=args.force)
+            result = runner.run_game(args.game, dry_run=args.dry_run, force=args.force, allow_placeholders=args.allow_placeholders)
             print(f"{result.game_id}: {result.status}")
         else:
-            results = runner.run_season(dry_run=args.dry_run, force=args.force)
+            results = runner.run_season(dry_run=args.dry_run, force=args.force, allow_placeholders=args.allow_placeholders)
             print(f"season: {len(results)} games processed")
 
 

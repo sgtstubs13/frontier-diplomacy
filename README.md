@@ -783,6 +783,7 @@ pip install -e .
 
 # Inspect configured labs (replace MODEL_ID values before paid runs)
 frontier-diplomacy labs
+frontier-diplomacy doctor --config config/labs.yaml
 
 # Generate and validate a balanced season
 frontier-diplomacy schedule --games 3 --seed 42 --output results/season-001/schedule.json
