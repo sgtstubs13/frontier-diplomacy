@@ -20,6 +20,10 @@ class RegistryTests(unittest.TestCase):
         labs = LabRegistry([LabConfig("on", "On", "x", "a"), LabConfig("off", "Off", "x", "b", False)])
         self.assertEqual(["on"], [lab.id for lab in labs.all(enabled_only=True)])
 
+    def test_provider_routing_id(self):
+        self.assertEqual("gemini:flash", LabConfig("google", "Google", "google", "flash").upstream_model_id())
+        self.assertEqual("openrouter:llama:free", LabConfig("meta", "Meta", "openrouter", "llama:free").upstream_model_id())
+
 
 class SchedulerTests(unittest.TestCase):
     def test_shape_and_determinism(self):
