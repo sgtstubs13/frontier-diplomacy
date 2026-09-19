@@ -37,5 +37,15 @@ dependencies = [
 [project.scripts]
 frontier-diplomacy = "frontier_diplomacy.__main__:main"
 
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+py-modules = ["config", "models", "lm_game", "experiment_runner"]
+
+[tool.setuptools.packages.find]
+include = ["ai_diplomacy*", "diplomacy*", "frontier_diplomacy*"]
+
 [tool.ruff]
 line-length = 150
