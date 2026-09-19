@@ -1,0 +1,12 @@
+# Model IDs are intentionally placeholders. Set exact current IDs before a paid run.
+labs:
+  openai: {display_name: OpenAI, provider: openai, model: MODEL_ID, enabled: true}
+  anthropic: {display_name: Anthropic, provider: anthropic, model: MODEL_ID, enabled: true}
+  google: {display_name: Google DeepMind, provider: google, model: MODEL_ID, enabled: true}
+  xai: {display_name: xAI, provider: openrouter, model: MODEL_ID, enabled: true}
+  meta: {display_name: Meta, provider: openrouter, model: MODEL_ID, enabled: true}
+  deepseek: {display_name: DeepSeek, provider: deepseek, model: MODEL_ID, enabled: true}
+  qwen: {display_name: Alibaba Qwen, provider: openrouter, model: MODEL_ID, enabled: true}
+  zai: {display_name: Z.ai, provider: openrouter, model: MODEL_ID, enabled: true}
+  moonshot: {display_name: Moonshot AI, provider: openrouter, model: MODEL_ID, enabled: true}
+  minimax: {display_name: MiniMax, provider: openrouter, model: MODEL_ID, enabled: true}

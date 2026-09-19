@@ -21,6 +21,7 @@ dependencies = [
   "pytest-xdist>=3.7.0",
   "python-dateutil>=2.9.0.post0",
   "pytz>=2025.2",
+  "pyyaml>=6.0.2",
   "scipy>=1.16.0",
   "seaborn>=0.13.2",
   "sphinx>=8.2.3",
@@ -32,6 +33,9 @@ dependencies = [
   "tqdm>=4.67.1",
   "ujson>=5.10.0",
 ]
+
+[project.scripts]
+frontier-diplomacy = "frontier_diplomacy.__main__:main"
 
 [tool.ruff]
 line-length = 150
