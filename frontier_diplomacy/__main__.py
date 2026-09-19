@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 
 from .registry import LabRegistry
+from .runner import SeasonRunner, load_schedule
 from .scheduler import GameAssignment, SeasonSchedule, generate_schedule, validate_schedule
 
 
@@ -21,6 +22,23 @@ def main() -> None:
     validate = subparsers.add_parser("validate-schedule", help="validate a saved schedule")
     validate.add_argument("schedule")
     validate.add_argument("--config", default="config/labs.yaml")
+
+    run_game = subparsers.add_parser("run-game", help="run one scheduled game through the upstream engine")
+    run_game.add_argument("--schedule", required=True)
+    run_game.add_argument("--game", required=True)
+    run_game.add_argument("--season-dir", required=True)
+    run_game.add_argument("--repo-root", default=".")
+    run_game.add_argument("--config", default="config/labs.yaml")
+    run_game.add_argument("--dry-run", action="store_true")
+    run_game.add_argument("--force", action="store_true")
+
+    run_season = subparsers.add_parser("run-season", help="run or resume all scheduled games")
+    run_season.add_argument("--schedule", required=True)
+    run_season.add_argument("--season-dir", required=True)
+    run_season.add_argument("--repo-root", default=".")
+    run_season.add_argument("--config", default="config/labs.yaml")
+    run_season.add_argument("--dry-run", action="store_true")
+    run_season.add_argument("--force", action="store_true")
     args = parser.parse_args()
     registry = LabRegistry.from_file(args.config)
     if args.command == "labs":
@@ -31,7 +49,7 @@ def main() -> None:
         generated = generate_schedule(registry, args.games, args.seed)
         generated.write(args.output)
         print(f"wrote {args.games} games to {args.output}")
-    else:
+    elif args.command == "validate-schedule":
         data = json.loads(Path(args.schedule).read_text(encoding="utf-8"))
         loaded = SeasonSchedule(data["games"], data["scheduler_seed"], tuple(GameAssignment(**item) for item in data["assignments"]))
         errors = validate_schedule(loaded, (lab.id for lab in registry.all()))
@@ -40,6 +58,15 @@ def main() -> None:
                 print(error)
             raise SystemExit(1)
         print(f"valid: {len(loaded.assignments)} games")
+    else:
+        schedule = load_schedule(args.schedule)
+        runner = SeasonRunner(registry, schedule, args.season_dir, args.repo_root)
+        if args.command == "run-game":
+            result = runner.run_game(args.game, dry_run=args.dry_run, force=args.force)
+            print(f"{result.game_id}: {result.status}")
+        else:
+            results = runner.run_season(dry_run=args.dry_run, force=args.force)
+            print(f"season: {len(results)} games processed")
 
 
 if __name__ == "__main__":
