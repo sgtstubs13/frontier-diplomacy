@@ -41,6 +41,10 @@ class SeasonRunner:
         self.season_dir = Path(season_dir)
         self.repo_root = Path(repo_root)
         self.games_dir = self.season_dir / "games"
+        schedule_path = self.season_dir / "schedule.json"
+        if not schedule_path.exists():
+            schedule_path.parent.mkdir(parents=True, exist_ok=True)
+            schedule_path.write_text(json.dumps(schedule.to_dict(), indent=2) + "\n", encoding="utf-8")
         if not (self.season_dir / "manifest.json").exists():
             create_manifest(self.season_dir, registry, schedule, self.repo_root)
 

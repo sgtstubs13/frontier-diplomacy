@@ -29,6 +29,8 @@ class RunnerTests(unittest.TestCase):
             result = runner.run_game("league-0001", dry_run=True)
             self.assertEqual("planned", result.status)
             self.assertTrue((Path(directory) / "games/league-0001/metadata.json").exists())
+            self.assertTrue((Path(directory) / "schedule.json").exists())
+            self.assertTrue((Path(directory) / "manifest.json").exists())
 
 
 if __name__ == "__main__":
