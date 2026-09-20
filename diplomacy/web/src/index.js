@@ -15,7 +15,7 @@
 //  with this program.  If not, see <https://www.gnu.org/licenses/>.
 // ==============================================================================
 import React from 'react';
-import ReactDOM from 'react-dom';
+import {createRoot} from 'react-dom/client';
 import {Page} from "./gui/pages/page";
 import 'popper.js';
 import 'bootstrap/dist/js/bootstrap';
@@ -25,4 +25,4 @@ import './index.css';
 
 // ========================================
 
-ReactDOM.render(<Page/>, document.getElementById('root'));
+createRoot(document.getElementById('root')).render(<Page/>);
