@@ -129,6 +129,7 @@ class SeasonRunner:
                 "FRONTIER_LEDGER_PATH": str(self.repo_root / "data" / "frontier_diplomacy_costs.sqlite"),
                 "FRONTIER_EXPERIMENT_ID": self.season_dir.name,
                 "FRONTIER_GAME_ID": game.game_id,
+                "FRONTIER_TRACE_PATH": str((directory / "calls.jsonl").resolve()),
             })
         completed = subprocess.run(command, cwd=self.repo_root, env=environment, capture_output=True, text=True, check=False)
         (directory / "runner.stdout.log").write_text(completed.stdout, encoding="utf-8")

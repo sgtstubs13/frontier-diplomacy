@@ -37,6 +37,22 @@ load_dotenv()
 _provider_semaphores: dict[str, asyncio.Semaphore] = {}
 
 
+async def gather_stage(*tasks):
+    """Settle authorized work, but never swallow a fatal budget/provider pause.
+
+    Legacy per-response errors remain values for the caller's existing handling.
+    BudgetExceeded deliberately inherits BaseException so agent-level fallback
+    handlers cannot turn infrastructure failures into strategic decisions.
+    asyncio.gather(return_exceptions=True) also captures that class: re-raise it
+    before any caller commits the stage or advances the engine.
+    """
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+    for result in results:
+        if isinstance(result, BaseException) and not isinstance(result, Exception):
+            raise result
+    return results
+
+
 def _provider_key(client) -> str:
     """Return the routing provider for a legacy model client."""
     name = type(client).__name__.lower()
@@ -472,6 +488,7 @@ async def run_llm_and_log(
         try:
             async with _provider_semaphore(client):
                 accounting.reserve()
+                accounting.dispatch()
                 raw_response = await client.generate_response(prompt, temperature=temperature)
 
             # The clients now raise ValueError, but this is a final safeguard.
@@ -483,7 +500,7 @@ async def run_llm_and_log(
             return raw_response
 
         except RETRYABLE_EXCEPTIONS as e:
-            accounting.finish("failed")
+            accounting.finish("unknown" if isinstance(e, (APIConnectionError, APITimeoutError, asyncio.TimeoutError)) else "failed")
             last_exception = e
             if attempt == attempts - 1:
                 # This was the last attempt, so we'll fall through to the final error handling.
@@ -516,6 +533,8 @@ async def run_llm_and_log(
                     power_name,
                 )
                 break
+            if getattr(e, "status_code", None) in (400, 401, 403, 404):
+                break
             if attempt == attempts - 1:
                 # This was the last attempt, so we'll fall through to the final error handling.
                 break
@@ -539,6 +558,9 @@ async def run_llm_and_log(
 
     # Re-raise the last captured exception so the caller knows the operation failed.
     # 'from None' prevents chaining the exception with the try/except block itself.
+    if os.environ.get("FRONTIER_EXPERIMENT_ID"):
+        from frontier_diplomacy.accounting import BudgetExceeded
+        raise BudgetExceeded(final_error_message) from last_exception
     raise last_exception from None
 
 

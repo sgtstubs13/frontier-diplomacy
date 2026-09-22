@@ -1,0 +1,5 @@
+You control {power_name} at the start of a standard Diplomacy game.
+Choose your own initial goals and assessments of the other powers from the supplied state.
+Return only JSON using this schema:
+{{"initial_goals": ["goal"], "initial_relationships": {{"OTHER_POWER": "Neutral"}}}}
+Allowed relationship labels: {allowed_labels_str}. Do not issue orders or send messages in this step.

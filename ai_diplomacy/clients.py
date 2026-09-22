@@ -779,7 +779,7 @@ class OpenAIClient(BaseModelClient):
         if not self.api_key:
             raise ValueError("OPENAI_API_KEY missing and no inline key provided")
 
-        self.client = AsyncOpenAI(api_key=self.api_key, base_url=self.base_url)
+        self.client = AsyncOpenAI(api_key=self.api_key, base_url=self.base_url, max_retries=0)
 
     async def generate_response(
         self,
@@ -822,6 +822,10 @@ class OpenAIClient(BaseModelClient):
             
             response = await self.client.chat.completions.create(**completion_params)
             self.last_usage = response.usage.model_dump() if getattr(response, "usage", None) else None
+            self.last_response_metadata = {
+                "id": response.id, "model": response.model,
+                "finish_reason": response.choices[0].finish_reason if response.choices else None,
+            }
 
             if (
                 not response
@@ -886,7 +890,7 @@ class ClaudeClient(BaseModelClient):
 
     def __init__(self, model_name: str, prompts_dir: Optional[str] = None):
         super().__init__(model_name, prompts_dir=prompts_dir)
-        self.client = AsyncAnthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
+        self.client = AsyncAnthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"), max_retries=0)
 
     async def generate_response(self, prompt: str, temperature: float = 0.0, inject_random_seed: bool = True) -> str:
         # Updated Claude messages format
@@ -906,6 +910,7 @@ class ClaudeClient(BaseModelClient):
             if not self.model_name.startswith(("claude-opus-4-", "claude-sonnet-4-", "claude-haiku-4-")):
                 request["temperature"] = temperature
             response = await self.client.messages.create(**request)
+            self.last_response_metadata = {"id": response.id, "model": response.model, "finish_reason": response.stop_reason}
             self.last_usage = getattr(response, "usage", None)
             if self.last_usage is not None and hasattr(self.last_usage, "model_dump"):
                 self.last_usage = self.last_usage.model_dump()
@@ -962,8 +967,13 @@ class GeminiClient(BaseModelClient):
             response = await self.client.generate_content_async(
                 contents=full_prompt,
                 generation_config=generation_config,
+                request_options={"retry": None, "timeout": 180},
             )
-
+            usage = getattr(response, "usage_metadata", None)
+            self.last_usage = type(usage).to_dict(usage) if usage is not None else None
+            self.last_response_metadata = {
+                "finish_reason": str(response.candidates[0].finish_reason) if response.candidates else None,
+            }
             if not response or not response.text:
                 raise ValueError(f"[{self.model_name}] LLM returned an empty or invalid response.")
             return response.text.strip()
@@ -1174,7 +1184,7 @@ class OpenRouterClient(BaseModelClient):
         if not self.api_key:
             raise ValueError("OPENROUTER_API_KEY environment variable is required")
 
-        self.client = AsyncOpenAI(base_url="https://openrouter.ai/api/v1", api_key=self.api_key)
+        self.client = AsyncOpenAI(base_url="https://openrouter.ai/api/v1", api_key=self.api_key, max_retries=0)
 
         logger.debug(f"[{self.model_name}] Initialized OpenRouter client")
 
@@ -1195,8 +1205,15 @@ class OpenRouterClient(BaseModelClient):
                 messages=[{"role": "system", "content": system_prompt_content}, {"role": "user", "content": prompt_with_cta}],
                 max_tokens=self.max_tokens,
                 temperature=temperature,
+                extra_body={"provider": getattr(self, "budget_provider_options", {})},
             )
 
+            self.last_usage = response.usage.model_dump() if getattr(response, "usage", None) else None
+            self.last_response_metadata = {
+                "id": response.id, "model": response.model,
+                "provider": getattr(response, "provider", None),
+                "finish_reason": response.choices[0].finish_reason if response.choices else None,
+            }
             if not response.choices or not response.choices[0].message.content:
                 raise ValueError(f"[{self.model_name}] LLM returned an empty or invalid response.")
 

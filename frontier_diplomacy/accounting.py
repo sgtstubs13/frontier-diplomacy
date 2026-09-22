@@ -37,10 +37,8 @@ class PriceSnapshot:
         normal_input = max(0, usage.input_tokens - usage.cached_input_tokens - usage.cache_write_tokens)
         value = Decimal(normal_input) * self.input_per_million / MILLION
         value += Decimal(usage.output_tokens + usage.reasoning_tokens) * self.output_per_million / MILLION
-        if self.cached_input_per_million is not None:
-            value += Decimal(usage.cached_input_tokens) * self.cached_input_per_million / MILLION
-        if self.cache_write_per_million is not None:
-            value += Decimal(usage.cache_write_tokens) * self.cache_write_per_million / MILLION
+        value += Decimal(usage.cached_input_tokens) * (self.cached_input_per_million if self.cached_input_per_million is not None else self.input_per_million) / MILLION
+        value += Decimal(usage.cache_write_tokens) * (self.cache_write_per_million if self.cache_write_per_million is not None else self.input_per_million) / MILLION
         return _money(value) or Decimal("0")
 
 
@@ -193,7 +191,7 @@ class CostLedger:
             if budget is None:
                 raise ValueError("experiment has no budget")
             spent = con.execute("SELECT calculated_cost_usd,reported_cost_usd FROM usage_records WHERE experiment_id=?", (experiment_id,)).fetchall()
-            reserved = con.execute("SELECT amount_usd FROM reservations WHERE experiment_id=? AND state='reserved'", (experiment_id,)).fetchall()
+            reserved = con.execute("SELECT amount_usd FROM reservations WHERE experiment_id=? AND state IN ('reserved','unresolved')", (experiment_id,)).fetchall()
         actual = sum((Decimal(row["reported_cost_usd"] or row["calculated_cost_usd"] or "0") for row in spent), Decimal("0"))
         held = sum((Decimal(row["amount_usd"]) for row in reserved), Decimal("0"))
         limit = Decimal(budget["budget_usd"])
@@ -207,7 +205,7 @@ class CostLedger:
             if budget is None:
                 raise ValueError("a budget must be set before requests can be reserved")
             actual = sum((Decimal(row[0] or row[1] or "0") for row in con.execute("SELECT reported_cost_usd,calculated_cost_usd FROM usage_records WHERE experiment_id=?", (experiment_id,))), Decimal("0"))
-            held = sum((Decimal(row[0]) for row in con.execute("SELECT amount_usd FROM reservations WHERE experiment_id=? AND state='reserved'", (experiment_id,))), Decimal("0"))
+            held = sum((Decimal(row[0]) for row in con.execute("SELECT amount_usd FROM reservations WHERE experiment_id=? AND state IN ('reserved','unresolved')", (experiment_id,))), Decimal("0"))
             if actual + held + amount > Decimal(budget["budget_usd"]):
                 raise BudgetExceeded("budget cannot reserve the next request")
             reservation_id = str(uuid.uuid4())

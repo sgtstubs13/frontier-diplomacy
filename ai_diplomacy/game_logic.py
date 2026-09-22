@@ -15,7 +15,7 @@ from .agent import DiplomacyAgent, ALL_POWERS
 from .clients import load_model_client
 from .game_history import GameHistory
 from .initialization import initialize_agent_state_ext
-from .utils import atomic_write_json, atomic_write_json_async, assign_models_to_powers
+from .utils import atomic_write_json, atomic_write_json_async, assign_models_to_powers, gather_stage
 
 logger = logging.getLogger(__name__)
 
@@ -380,7 +380,7 @@ async def initialize_new_game(
                 )
 
     logger.info(f"Running {len(initialization_tasks)} agent initializations concurrently...")
-    initialization_results = await asyncio.gather(*initialization_tasks, return_exceptions=True)
+    initialization_results = await gather_stage(*initialization_tasks)
 
     initialized_powers = list(agents.keys())
     for i, result in enumerate(initialization_results):
@@ -392,4 +392,3 @@ async def initialize_new_game(
                 logger.info(f"Successfully initialized agent state for {power_name}.")
 
     return agents
-

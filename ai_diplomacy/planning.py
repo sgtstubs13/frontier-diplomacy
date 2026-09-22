@@ -4,6 +4,7 @@ from typing import Dict
 
 from .game_history import GameHistory
 from .agent import DiplomacyAgent
+from .utils import gather_stage
 
 logger = logging.getLogger(__name__)
 
@@ -41,7 +42,7 @@ async def planning_phase(
         return power_name, agent, plan
 
     active = [name for name in active_powers if name in agents]
-    results = await asyncio.gather(*(get_plan(name) for name in active), return_exceptions=True)
+    results = await gather_stage(*(get_plan(name) for name in active))
     for result in results:
         if isinstance(result, Exception):
             logger.error("Planning call failed: %s", result, exc_info=result)

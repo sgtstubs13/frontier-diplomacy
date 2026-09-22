@@ -6,7 +6,7 @@ from typing import Dict, TYPE_CHECKING
 from diplomacy.engine.message import Message, GLOBAL
 
 from .agent import DiplomacyAgent
-from .utils import gather_possible_orders, normalize_recipient_name
+from .utils import gather_possible_orders, normalize_recipient_name, gather_stage
 
 if TYPE_CHECKING:
     from .game_history import GameHistory
@@ -89,7 +89,7 @@ async def conduct_negotiations(
         # Run tasks concurrently if any were created
         if tasks:
             logger.debug(f"Running {len(tasks)} conversation tasks concurrently...")
-            results = await asyncio.gather(*tasks, return_exceptions=True)
+            results = await gather_stage(*tasks)
         else:
             logger.debug("No conversation tasks to run for this round.")
             results = []

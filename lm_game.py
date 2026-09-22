@@ -20,7 +20,7 @@ os.environ["GRPC_POLL_STRATEGY"] = "poll"  # Use 'poll' for macOS compatibility
 
 from diplomacy import Game
 
-from ai_diplomacy.utils import get_valid_orders, gather_possible_orders, parse_prompts_dir_arg
+from ai_diplomacy.utils import get_valid_orders, gather_possible_orders, parse_prompts_dir_arg, gather_stage
 from ai_diplomacy.negotiations import conduct_negotiations
 from ai_diplomacy.planning import planning_phase
 from ai_diplomacy.game_history import GameHistory
@@ -373,7 +373,7 @@ async def main():
                     for agent in agents.values() if not game.powers[agent.power_name].is_eliminated()
                 ]
                 if neg_diary_tasks:
-                    await asyncio.gather(*neg_diary_tasks, return_exceptions=True)
+                    await gather_stage(*neg_diary_tasks)
 
         # --- 4c. Parallel Order Generation and Diary Consolidation ---
         # Rebuild long-term memory before decisions, not concurrently with them.
@@ -385,7 +385,7 @@ async def main():
                 if not game.powers[agent.power_name].is_eliminated()
             ]
             if consolidation_tasks:
-                await asyncio.gather(*consolidation_tasks, return_exceptions=True)
+                await gather_stage(*consolidation_tasks)
 
         # Order Generation (proceeds with current diary state)
         logger.info("Getting orders from agents...")
@@ -408,7 +408,7 @@ async def main():
                     )
                 )
         
-        order_results = await asyncio.gather(*order_tasks, return_exceptions=True)
+        order_results = await gather_stage(*order_tasks)
         
         active_powers = [p for p, a in agents.items() if not game.powers[p].is_eliminated()]
         order_power_names = [p for p in active_powers if gather_possible_orders(game, p)]
@@ -474,7 +474,7 @@ async def main():
                 for agent in agents.values() if not game.powers[agent.power_name].is_eliminated()
             ]
             if phase_result_diary_tasks:
-                await asyncio.gather(*phase_result_diary_tasks, return_exceptions=True)
+                await gather_stage(*phase_result_diary_tasks)
 
         
 
@@ -486,12 +486,12 @@ async def main():
                 for agent in agents.values() if not game.powers[agent.power_name].is_eliminated()
             ]
             if state_update_tasks:
-                await asyncio.gather(*state_update_tasks, return_exceptions=True)
+                await gather_stage(*state_update_tasks)
 
         # --- 4f. Save State At End of Phase ---
         # Draws are private simultaneous ballots after each Fall adjustment.
         # A solo victory already ends the engine before this point.
-        if (not run_config.solo_only and completed_phase.startswith("F") and completed_phase.endswith("A")
+        if (not run_config.solo_only and game.current_short_phase.startswith(f"S{year_int + 1}")
                 and not game.is_game_done):
             if await collect_draw_votes(game, agents, llm_log_file_path):
                 logger.info("Unanimous draw accepted.")

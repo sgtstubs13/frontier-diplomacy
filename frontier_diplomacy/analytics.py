@@ -34,12 +34,18 @@ def analyze_season(season_dir: str | Path) -> dict:
     standings: dict[str, dict[str, Any]] = defaultdict(lambda: {"games": 0, "final_sc": [], "solo_wins": 0, "draws": 0, "survivals": 0, "eliminations": 0, "cost": []})
     country: dict[str, dict[str, dict[str, Any]]] = defaultdict(lambda: defaultdict(lambda: {"games": 0, "final_sc": []}))
     games = []
+    unfinished_games = []
     for game_dir in sorted((root / "games").glob("*/")) if (root / "games").exists() else []:
         metadata_path = game_dir / "metadata.json"
         if not metadata_path.exists():
             continue
         metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
         summary = _summary_for(game_dir)
+        status_path = game_dir / "status.json"
+        status = json.loads(status_path.read_text(encoding="utf-8")) if status_path.exists() else None
+        if not summary or (status is not None and status.get("status") != "completed"):
+            unfinished_games.append(metadata.get("game_id", game_dir.name))
+            continue
         centers = _centers(summary)
         assignments = metadata.get("assignments", {})
         for power, details in assignments.items():
@@ -71,6 +77,7 @@ def analyze_season(season_dir: str | Path) -> dict:
 
     return {
         "games_with_artifacts": len(games),
+        "unfinished_games_excluded": unfinished_games,
         "standings": {lab: compact(stats) for lab, stats in sorted(standings.items())},
         "country_bias": {
             lab: {power: {"games": cell["games"], "avg_final_sc": mean(cell["final_sc"]) if cell["final_sc"] else 0.0} for power, cell in sorted(cells.items())}
