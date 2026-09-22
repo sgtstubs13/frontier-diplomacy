@@ -31,6 +31,7 @@ from ai_diplomacy.game_logic import (
     initialize_new_game,
 )
 from ai_diplomacy.diary_logic import run_diary_consolidation
+from ai_diplomacy.draws import collect_draw_votes
 from config import config
 
 dotenv.load_dotenv()
@@ -185,6 +186,9 @@ def parse_arguments():
             "Falls back to generic prompts if country-specific not found."
         ),
     )
+    parser.add_argument("--prompt_profile", default="legacy", choices=("legacy", "neutral-v1"),
+                        help="Select legacy or neutral benchmark prompts.")
+    parser.add_argument("--solo_only", action="store_true", help="Record a solo-only league policy.")
 
     return parser.parse_args()
 
@@ -243,6 +247,7 @@ async def main():
     else:
         config.COUNTRY_SPECIFIC_PROMPTS = False
         logger.info("Using generic prompts for all powers")
+    config.PROMPT_PROFILE = args.prompt_profile
 
     if args.max_year == None:
         if args.end_at_phase:
@@ -362,16 +367,16 @@ async def main():
                     game, agents, game_history, model_error_stats, log_file_path=llm_log_file_path,
                 )
             
-            neg_diary_tasks = [
-                agent.generate_negotiation_diary_entry(game, game_history, llm_log_file_path)
-                for agent in agents.values() if not game.powers[agent.power_name].is_eliminated()
-            ]
-            if neg_diary_tasks:
-                await asyncio.gather(*neg_diary_tasks, return_exceptions=True)
+            if run_config.num_negotiation_rounds > 0:
+                neg_diary_tasks = [
+                    agent.generate_negotiation_diary_entry(game, game_history, llm_log_file_path)
+                    for agent in agents.values() if not game.powers[agent.power_name].is_eliminated()
+                ]
+                if neg_diary_tasks:
+                    await asyncio.gather(*neg_diary_tasks, return_exceptions=True)
 
         # --- 4c. Parallel Order Generation and Diary Consolidation ---
-        # Start diary consolidation in parallel with order generation
-        consolidation_future = None
+        # Rebuild long-term memory before decisions, not concurrently with them.
         if current_short_phase.startswith("S") and current_short_phase.endswith("M"):
             consolidation_tasks = [
                 run_diary_consolidation(agent, game, llm_log_file_path,
@@ -380,8 +385,7 @@ async def main():
                 if not game.powers[agent.power_name].is_eliminated()
             ]
             if consolidation_tasks:
-                # Start consolidation tasks but don't await yet
-                consolidation_future = asyncio.gather(*consolidation_tasks, return_exceptions=True)
+                await asyncio.gather(*consolidation_tasks, return_exceptions=True)
 
         # Order Generation (proceeds with current diary state)
         logger.info("Getting orders from agents...")
@@ -399,16 +403,12 @@ async def main():
                         game, agent.client, board_state, power_name, possible_orders,
                         game_history, model_error_stats,
                         agent_goals=agent.goals, agent_relationships=agent.relationships,
-                        agent_private_diary_str=agent.get_latest_phase_diary_entries(), # only include latest phase in orders prompt
+                        agent_private_diary_str=agent.format_private_diary_for_prompt(),
                         log_file_path=llm_log_file_path, phase=current_phase,
                     )
                 )
         
         order_results = await asyncio.gather(*order_tasks, return_exceptions=True)
-        
-        # Ensure consolidation completes before proceeding to diary entries
-        if consolidation_future:
-            await consolidation_future
         
         active_powers = [p for p, a in agents.items() if not game.powers[p].is_eliminated()]
         order_power_names = [p for p in active_powers if gather_possible_orders(game, p)]
@@ -489,6 +489,12 @@ async def main():
                 await asyncio.gather(*state_update_tasks, return_exceptions=True)
 
         # --- 4f. Save State At End of Phase ---
+        # Draws are private simultaneous ballots after each Fall adjustment.
+        # A solo victory already ends the engine before this point.
+        if (not run_config.solo_only and completed_phase.startswith("F") and completed_phase.endswith("A")
+                and not game.is_game_done):
+            if await collect_draw_votes(game, agents, llm_log_file_path):
+                logger.info("Unanimous draw accepted.")
         await save_game_state(game, agents, game_history, game_file_path, run_config, completed_phase)
         logger.info(f"Phase {current_phase} took {time.time() - phase_start:.2f}s")
 

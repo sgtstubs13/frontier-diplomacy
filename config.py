@@ -1,4 +1,5 @@
 import datetime
+import os
 from typing import Optional
 from pydantic_settings import BaseSettings
 from pathlib import Path
@@ -12,6 +13,7 @@ class Configuration(BaseSettings):
     USE_UNFORMATTED_PROMPTS: bool = False
     SIMPLE_PROMPTS: bool = True
     COUNTRY_SPECIFIC_PROMPTS: bool = False
+    PROMPT_PROFILE: str = "legacy"
 
     # Default models for tasks
     AI_DIPLOMACY_NARRATIVE_MODEL: str = "openrouter-google/gemini-2.5-flash-preview-05-20"
@@ -26,6 +28,15 @@ class Configuration(BaseSettings):
     TOGETHER_API_KEY: str | None = None
 
     def __init__(self, power_name: Optional[PowerEnum] = None, **kwargs):
+        # Deployment tooling commonly exports DEBUG as ``release`` or
+        # ``development``. Pydantic's bool parser rightly rejects those words,
+        # but treating them as explicit environment modes is unambiguous and
+        # prevents workers from failing before their first model call.
+        raw_debug = os.environ.get("DEBUG", "").strip().lower()
+        if "DEBUG" not in kwargs and raw_debug in {"release", "production"}:
+            kwargs["DEBUG"] = False
+        elif "DEBUG" not in kwargs and raw_debug in {"development", "dev"}:
+            kwargs["DEBUG"] = True
         super().__init__(**kwargs)
         # Add a '-POWER' to the end of the file name if it's for a specific power
         log_power_path = "-" + power_name if power_name else None

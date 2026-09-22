@@ -79,7 +79,10 @@ class DiplomacyAgent:
         default_prompts_path = os.path.join(current_dir, "prompts")
         prompts_root = self.prompts_dir or default_prompts_path
 
-        power_prompt_name = f"{power_name.lower()}_system_prompt.txt"
+        # Frontier benchmark runs deliberately use a single neutral system
+        # prompt. Legacy country prompts remain available for reproducing old
+        # experiments, but must never leak into a neutral comparison.
+        power_prompt_name = "neutral_system_prompt.txt" if config.PROMPT_PROFILE == "neutral-v1" else f"{power_name.lower()}_system_prompt.txt"
         default_prompt_name = "system_prompt.txt"
 
         power_prompt_path = os.path.join(prompts_root, power_prompt_name)

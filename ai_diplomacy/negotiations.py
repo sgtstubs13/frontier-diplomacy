@@ -46,11 +46,6 @@ async def conduct_negotiations(
     else:
         logger.info("No eliminated powers yet.")
 
-    # ── new tracking for consecutive private messages ───────────────
-    last_sent_round: Dict[tuple[str, str], int] = {}
-    awaiting_reply: Dict[tuple[str, str], bool] = {}
-    # ────────────────────────────────────────────────────────────────
-
     # We do up to 'max_rounds' single-message turns for each power
     for round_index in range(max_rounds):
         logger.info(f"Negotiation Round {round_index + 1}/{max_rounds}")
@@ -137,28 +132,11 @@ async def conduct_negotiations(
                 # Determine recipient
                 if message.get("message_type") == "private":
                     recipient = normalize_recipient_name(message.get("recipient", GLOBAL))
-                    if recipient not in game.powers and recipient != GLOBAL:
-                        logger.warning(f"Invalid recipient '{recipient}' in message from {power_name}. Sending globally.")
-                        recipient = GLOBAL
+                    if recipient not in game.powers or recipient == power_name:
+                        logger.warning(f"Invalid private recipient '{recipient}' from {power_name}. Dropping message.")
+                        continue
                 else:
                     recipient = GLOBAL
-
-                # ── repetition guard for private messages ─────────────
-                if recipient != GLOBAL:
-                    pair = (power_name, recipient)
-                    if awaiting_reply.get(pair, False) and last_sent_round.get(pair) == round_index - 1:
-                        logger.info(
-                            f"Discarding repeat private message from {power_name} to {recipient} "
-                            f"(waiting for reply since last round)."
-                        )
-                        continue  # skip this message
-
-                    # record outbound and set waiting flag
-                    last_sent_round[pair] = round_index
-                    awaiting_reply[pair] = True
-                    # recipient has now been contacted; when they respond, we'll clear the flag for the reverse pair
-                    awaiting_reply[(recipient, power_name)] = False
-                # ─────────────────────────────────────────────────────
 
                 diplo_message = Message(
                     phase=game.current_short_phase,
@@ -183,4 +161,3 @@ async def conduct_negotiations(
 
     logger.info("Negotiation phase complete.")
     return game_history
-

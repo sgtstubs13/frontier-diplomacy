@@ -54,6 +54,27 @@ def generate_schedule(registry: LabRegistry, games: int, seed: int) -> SeasonSch
     if len(labs) < len(POWERS):
         raise ValueError(f"At least {len(POWERS)} enabled labs are required")
     rng = random.Random(seed)
+    # Seven selected competitors have a stronger guarantee than approximate
+    # balancing: each complete seven-game block gives every competitor every
+    # power exactly once. This removes country assignment as a confounder for
+    # the most common league setup.
+    if len(labs) == len(POWERS):
+        result = []
+        base = list(labs)
+        for game_number in range(1, games + 1):
+            block = (game_number - 1) // len(POWERS)
+            position = (game_number - 1) % len(POWERS)
+            if position == 0:
+                rng.shuffle(base)
+                block_order = tuple(base)
+            # Rotate the fresh block order. Capture it on every iteration so
+            # partial blocks are still deterministic and visibly incomplete.
+            order = block_order[position:] + block_order[:position]
+            result.append(GameAssignment(
+                f"league-{game_number:04d}", rng.randrange(0, 2**63), dict(zip(POWERS, order))
+            ))
+        return SeasonSchedule(games, seed, tuple(result))
+
     lab_counts = Counter()
     power_counts = defaultdict(Counter)
     pair_counts = Counter()

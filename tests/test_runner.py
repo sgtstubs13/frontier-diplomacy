@@ -5,6 +5,8 @@ from pathlib import Path
 from frontier_diplomacy.registry import LabConfig, LabRegistry
 from frontier_diplomacy.runner import SeasonRunner
 from frontier_diplomacy.scheduler import generate_schedule
+from frontier_diplomacy.experiment import ExperimentConfig
+from decimal import Decimal
 
 
 class RunnerTests(unittest.TestCase):
@@ -31,6 +33,18 @@ class RunnerTests(unittest.TestCase):
             self.assertTrue((Path(directory) / "games/league-0001/metadata.json").exists())
             self.assertTrue((Path(directory) / "schedule.json").exists())
             self.assertTrue((Path(directory) / "manifest.json").exists())
+
+    def test_experiment_duration_is_translated_to_calendar_year(self):
+        config = ExperimentConfig(
+            name="calibration",
+            model_ids=tuple(profile.id for profile in self.registry.all()),
+            games=1,
+            max_year=20,
+            budget_usd=Decimal("1"),
+        )
+        runner = SeasonRunner(self.registry, self.schedule, "/tmp/season", "/repo", config=config)
+        command = runner.command_for(self.schedule.assignments[0])
+        self.assertEqual("1920", command[command.index("--max_year") + 1])
 
 
 if __name__ == "__main__":

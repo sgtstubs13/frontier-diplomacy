@@ -9,6 +9,9 @@ from .runner import SeasonRunner, load_schedule
 from .analytics import analyze_season
 from .doctor import check_registry
 from .scheduler import GameAssignment, SeasonSchedule, balance_report, generate_schedule, validate_schedule
+from .server import serve
+from .accounting import CostLedger, PriceSnapshot
+from decimal import Decimal
 
 
 def main() -> None:
@@ -51,7 +54,29 @@ def main() -> None:
     doctor = subparsers.add_parser("doctor", help="check lab models, providers, and optional API keys")
     doctor.add_argument("--config", default="config/labs.yaml")
     doctor.add_argument("--require-keys", action="store_true")
+    dashboard = subparsers.add_parser("dashboard", help="start the local Frontier Diplomacy dashboard API")
+    dashboard.add_argument("--config", default="config/labs.yaml")
+    dashboard.add_argument("--port", type=int, default=8743)
+    price = subparsers.add_parser("price", help="add a versioned USD-per-million-token price card")
+    price.add_argument("--ledger", default="data/frontier_diplomacy_costs.sqlite")
+    price.add_argument("--model", required=True)
+    price.add_argument("--provider", required=True)
+    price.add_argument("--input", type=Decimal, required=True, dest="input_rate")
+    price.add_argument("--output", type=Decimal, required=True, dest="output_rate")
+    price.add_argument("--cached-input", type=Decimal)
+    price.add_argument("--cache-write", type=Decimal)
+    price.add_argument("--source", default="manual")
     args = parser.parse_args()
+    if args.command == "dashboard":
+        serve(args.config, args.port)
+        return
+    if args.command == "price":
+        stored = CostLedger(args.ledger).add_price(PriceSnapshot(
+            args.model, args.provider, args.input_rate, args.output_rate,
+            args.cached_input, args.cache_write, args.source,
+        ))
+        print(f"stored price snapshot {stored.id} for {stored.provider}:{stored.model_id}")
+        return
     if args.command == "analyze":
         result = analyze_season(args.season_dir)
         rendered = json.dumps(result, indent=2) + "\n"

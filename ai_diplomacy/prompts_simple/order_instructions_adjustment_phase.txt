@@ -16,17 +16,11 @@ Disband: '[UnitType] [Location] D'
 e.g. 'A PAR D', 'F LON D'
 
 Your Task:
-1. Reason
-  - comprehensive reasoning about your adjustment decisions
-2. Output Moves in JSON
-  - return all build/disband orders needed
+- Return all required build or disband orders.
+- Keep any reasoning private; do not emit analysis, Markdown, or explanatory text.
 
-Respond with this exact format:
+Respond with ONLY this JSON object, beginning with `{` and ending with `}`:
 
-Reasoning:
-(Your reasoning goes here)
-
-PARSABLE OUTPUT:
-{{
+{
   "orders": ["order1", "order2", ...]
-}}
+}

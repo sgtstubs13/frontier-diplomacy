@@ -1,12 +1,104 @@
-# Model IDs are intentionally placeholders. Set exact current IDs before a paid run.
+# Pinned model catalog, refreshed 2026-09-20. Every entry is an independently
+# selectable competitor; metadata.lab_id keeps results grouped by originating lab.
+# Prices are USD per million tokens for the stated standard route. OpenRouter
+# prices are route snapshots, not promises of a future auto-routed price.
 labs:
-  openai: {display_name: OpenAI, provider: openai, model: MODEL_ID, enabled: true}
-  anthropic: {display_name: Anthropic, provider: anthropic, model: MODEL_ID, enabled: true}
-  google: {display_name: Google DeepMind, provider: google, model: MODEL_ID, enabled: true}
-  xai: {display_name: xAI, provider: openrouter, model: MODEL_ID, enabled: true}
-  meta: {display_name: Meta, provider: openrouter, model: MODEL_ID, enabled: true}
-  deepseek: {display_name: DeepSeek, provider: deepseek, model: MODEL_ID, enabled: true}
-  qwen: {display_name: Alibaba Qwen, provider: openrouter, model: MODEL_ID, enabled: true}
-  zai: {display_name: Z.ai, provider: openrouter, model: MODEL_ID, enabled: true}
-  moonshot: {display_name: Moonshot AI, provider: openrouter, model: MODEL_ID, enabled: true}
-  minimax: {display_name: MiniMax, provider: openrouter, model: MODEL_ID, enabled: true}
+  openai:
+    display_name: OpenAI
+    provider: openai
+    service_tier: standard
+    models:
+      gpt_6_astra: {display_name: GPT-6 Astra, model: gpt-6-astra, metadata: {price: {input_per_million: 5.00, output_per_million: 25.00, cached_input_per_million: 0.50, source: "https://developers.openai.com/api/docs/pricing"}}}
+      gpt_5_6_sol: {display_name: GPT-5.6 Sol, model: gpt-5.6-sol, metadata: {price: {input_per_million: 2.00, output_per_million: 10.00, cached_input_per_million: 0.20, source: "https://developers.openai.com/api/docs/pricing"}}}
+      gpt_5_6_terra: {display_name: GPT-5.6 Terra, model: gpt-5.6-terra, metadata: {price: {input_per_million: 1.00, output_per_million: 6.00, cached_input_per_million: 0.10, source: "https://developers.openai.com/api/docs/pricing"}}}
+      gpt_5_6_luna: {display_name: GPT-5.6 Luna, model: gpt-5.6-luna, metadata: {price: {input_per_million: 0.10, output_per_million: 0.60, cached_input_per_million: 0.01, source: "https://developers.openai.com/api/docs/pricing"}}}
+
+  anthropic:
+    display_name: Anthropic
+    provider: anthropic
+    service_tier: standard
+    models:
+      claude_opus_5: {display_name: Claude Opus 5, model: claude-opus-5, metadata: {price: {input_per_million: 5.00, output_per_million: 25.00, cached_input_per_million: 0.50, source: "https://platform.claude.com/docs/en/about-claude/pricing"}}}
+      claude_opus_4_8: {display_name: Claude Opus 4.8, model: claude-opus-4-8, metadata: {price: {input_per_million: 5.00, output_per_million: 25.00, cached_input_per_million: 0.50, source: "https://platform.claude.com/docs/en/about-claude/pricing"}}}
+      claude_opus_4_7: {display_name: Claude Opus 4.7, model: claude-opus-4-7, metadata: {price: {input_per_million: 5.00, output_per_million: 25.00, cached_input_per_million: 0.50, source: "https://platform.claude.com/docs/en/about-claude/pricing"}}}
+      claude_opus_4_6: {display_name: Claude Opus 4.6, model: claude-opus-4-6, metadata: {price: {input_per_million: 5.00, output_per_million: 25.00, cached_input_per_million: 0.50, source: "https://platform.claude.com/docs/en/about-claude/pricing"}}}
+
+  google:
+    display_name: Google DeepMind
+    provider: google
+    service_tier: standard
+    models:
+      gemini_3_8_flash: {display_name: Gemini 3.8 Flash, model: gemini-3.8-flash, metadata: {price: {input_per_million: 0.75, output_per_million: 3.75, cached_input_per_million: 0.075, source: "https://ai.google.dev/gemini-api/docs/pricing"}}}
+      gemini_3_7_flash: {display_name: Gemini 3.7 Flash, model: gemini-3.7-flash, metadata: {price: {input_per_million: 0.75, output_per_million: 3.75, cached_input_per_million: 0.075, source: "https://ai.google.dev/gemini-api/docs/pricing"}}}
+      gemini_3_6_flash: {display_name: Gemini 3.6 Flash, model: gemini-3.6-flash, metadata: {price: {input_per_million: 0.75, output_per_million: 3.75, cached_input_per_million: 0.075, source: "https://ai.google.dev/gemini-api/docs/pricing"}}}
+      gemini_3_5_flash: {display_name: Gemini 3.5 Flash, model: gemini-3.5-flash, metadata: {price: {input_per_million: 1.50, output_per_million: 9.00, cached_input_per_million: 0.15, source: "https://ai.google.dev/gemini-api/docs/pricing"}}}
+
+  xai:
+    display_name: xAI
+    provider: xai
+    service_tier: standard
+    models:
+      grok_4_20: {display_name: Grok 4.20, model: grok-4.20-0309-reasoning, metadata: {price: {input_per_million: 1.25, output_per_million: 2.50, cached_input_per_million: 0.20, source: "https://docs.x.ai/developers/pricing"}}}
+      grok_4_3: {display_name: Grok 4.3, model: grok-4.3, metadata: {price: {input_per_million: 1.25, output_per_million: 2.50, cached_input_per_million: 0.20, source: "https://docs.x.ai/developers/pricing"}}}
+      grok_4_1_fast: {display_name: Grok 4.1 Fast (deprecated), model: grok-4-1-fast-reasoning, enabled: false, metadata: {price: {input_per_million: 1.25, output_per_million: 2.50, cached_input_per_million: 0.20, source: "https://docs.x.ai/developers/migration/may-15-retirement"}}}
+      grok_4_fast: {display_name: Grok 4 Fast (deprecated), model: grok-4-fast-reasoning, enabled: false, metadata: {price: {input_per_million: 1.25, output_per_million: 2.50, cached_input_per_million: 0.20, source: "https://docs.x.ai/developers/migration/may-15-retirement"}}}
+
+  meta:
+    display_name: Meta
+    provider: openrouter
+    service_tier: standard
+    models:
+      llama_4_maverick: {display_name: Llama 4 Maverick, model: meta-llama/llama-4-maverick, metadata: {price: {input_per_million: 0.1875, output_per_million: 0.6525, source: "https://openrouter.ai/meta-llama/llama-4-maverick"}}}
+      llama_4_scout: {display_name: Llama 4 Scout, model: meta-llama/llama-4-scout, metadata: {price: {input_per_million: 0.10, output_per_million: 0.30, source: "https://openrouter.ai/meta-llama/llama-4-scout"}}}
+      llama_3_3_70b: {display_name: Llama 3.3 70B Instruct, model: meta-llama/llama-3.3-70b-instruct, metadata: {price: {input_per_million: 0.10, output_per_million: 0.32, source: "https://openrouter.ai/meta-llama/llama-3.3-70b-instruct"}}}
+      llama_3_1_405b: {display_name: Llama 3.1 405B Instruct (no current endpoint), model: meta-llama/llama-3.1-405b-instruct, enabled: false, metadata: {price: {input_per_million: 0.80, output_per_million: 0.80, source: "https://openrouter.ai/meta-llama/llama-3.1-405b-instruct"}}}
+
+  deepseek:
+    display_name: DeepSeek
+    provider: openrouter
+    service_tier: standard
+    models:
+      v4_1_flash: {display_name: DeepSeek V4.1 Flash, model: deepseek/deepseek-v4.1-flash, metadata: {price: {input_per_million: 0.13, output_per_million: 0.52, cached_input_per_million: 0.0026, source: "https://openrouter.ai/deepseek/deepseek-v4.1-flash"}}}
+      v4_pro_0813: {display_name: DeepSeek V4 Pro 0813, model: deepseek/deepseek-v4-pro-0813, metadata: {price: {input_per_million: 0.66, output_per_million: 1.98, cached_input_per_million: 0.066, source: "https://openrouter.ai/deepseek/deepseek-v4-pro-0813"}}}
+      v4_flash_0731: {display_name: DeepSeek V4 Flash 0731, model: deepseek/deepseek-v4-flash-0731, metadata: {price: {input_per_million: 0.03, output_per_million: 0.13, cached_input_per_million: 0.01, source: "https://openrouter.ai/deepseek/deepseek-v4-flash-20260731/"}}}
+      v3_2: {display_name: DeepSeek V3.2, model: deepseek/deepseek-v3.2, metadata: {price: {input_per_million: 0.2088, output_per_million: 0.3096, cached_input_per_million: 0.0216, source: "https://openrouter.ai/deepseek/deepseek-v3.2"}}}
+
+  qwen:
+    display_name: Alibaba Qwen
+    provider: openrouter
+    service_tier: standard
+    models:
+      qwen_3_8_max: {display_name: Qwen 3.8 Max 0902, model: qwen/qwen3.8-max-0902, metadata: {price: {input_per_million: 2.00, output_per_million: 6.00, cached_input_per_million: 0.25, source: "https://openrouter.ai/qwen/qwen3.8-max-0902"}}}
+      qwen_3_7_max: {display_name: Qwen 3.7 Max, model: qwen/qwen3.7-max, metadata: {price: {input_per_million: 1.475, output_per_million: 4.425, cached_input_per_million: 0.295, source: "https://openrouter.ai/qwen/qwen3.7-max"}}}
+      qwen_3_6_plus: {display_name: Qwen 3.6 Plus, model: qwen/qwen3.6-plus, metadata: {price: {input_per_million: 0.325, output_per_million: 1.95, cached_input_per_million: 0.0325, source: "https://openrouter.ai/qwen/qwen3.6-plus"}}}
+      qwen_3_5_plus: {display_name: Qwen 3.5 Plus 20260420, model: qwen/qwen3.5-plus-20260420, metadata: {price: {input_per_million: 0.30, output_per_million: 1.80, cached_input_per_million: 0.03, source: "https://openrouter.ai/qwen/qwen3.5-plus-20260420"}}}
+
+  zai:
+    display_name: Z.ai
+    provider: openrouter
+    service_tier: standard
+    models:
+      glm_5: {display_name: GLM 5, model: z-ai/glm-5, metadata: {price: {input_per_million: 0.60, output_per_million: 1.92, cached_input_per_million: 0.12, source: "https://openrouter.ai/z-ai/glm-5"}}}
+      glm_4_7: {display_name: GLM 4.7, model: z-ai/glm-4.7, metadata: {price: {input_per_million: 0.40, output_per_million: 1.75, cached_input_per_million: 0.08, source: "https://openrouter.ai/z-ai/glm-4.7"}}}
+      glm_4_6: {display_name: GLM 4.6, model: z-ai/glm-4.6, metadata: {price: {input_per_million: 0.43, output_per_million: 1.75, cached_input_per_million: 0.08, source: "https://openrouter.ai/z-ai/glm-4.6"}}}
+      glm_4_5: {display_name: GLM 4.5, model: z-ai/glm-4.5, metadata: {price: {input_per_million: 0.60, output_per_million: 2.20, cached_input_per_million: 0.11, source: "https://openrouter.ai/z-ai/glm-4.5"}}}
+
+  moonshot:
+    display_name: Moonshot AI
+    provider: openrouter
+    service_tier: standard
+    models:
+      kimi_k3: {display_name: Kimi K3, model: moonshotai/kimi-k3, metadata: {price: {input_per_million: 2.40, output_per_million: 12.00, source: "https://openrouter.ai/moonshotai/kimi-k3-20260715"}}}
+      kimi_k2_6: {display_name: Kimi K2.6, model: moonshotai/kimi-k2.6, metadata: {price: {input_per_million: 0.58, output_per_million: 3.40, cached_input_per_million: 0.058, source: "https://openrouter.ai/moonshotai/kimi-k2.6"}}}
+      kimi_k2_5: {display_name: Kimi K2.5, model: moonshotai/kimi-k2.5, metadata: {price: {input_per_million: 0.45, output_per_million: 2.25, cached_input_per_million: 0.07, source: "https://openrouter.ai/moonshotai/kimi-k2.5"}}}
+      kimi_k2_thinking: {display_name: Kimi K2 Thinking, model: moonshotai/kimi-k2-thinking, metadata: {price: {input_per_million: 0.60, output_per_million: 2.50, source: "https://openrouter.ai/moonshotai/kimi-k2-thinking"}}}
+
+  minimax:
+    display_name: MiniMax
+    provider: openrouter
+    service_tier: standard
+    models:
+      minimax_m2_5: {display_name: MiniMax M2.5, model: minimax/minimax-m2.5, metadata: {price: {input_per_million: 0.27, output_per_million: 0.95, cached_input_per_million: 0.03, source: "https://openrouter.ai/minimax/minimax-m2.5-20260211/pricing"}}}
+      minimax_m2_1: {display_name: MiniMax M2.1, model: minimax/minimax-m2.1, metadata: {price: {input_per_million: 0.30, output_per_million: 1.20, cached_input_per_million: 0.03, source: "https://openrouter.ai/minimax/minimax-m2.1"}}}
+      minimax_m2: {display_name: MiniMax M2, model: minimax/minimax-m2, metadata: {price: {input_per_million: 0.255, output_per_million: 1.02, source: "https://openrouter.ai/minimax/minimax-m2"}}}
+      minimax_m1: {display_name: MiniMax M1, model: minimax/minimax-m1, metadata: {price: {input_per_million: 0.40, output_per_million: 2.20, source: "https://openrouter.ai/minimax/minimax-m1"}}}

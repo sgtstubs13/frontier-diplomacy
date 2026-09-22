@@ -56,6 +56,7 @@ class BaseModelClient:
         # Load a default initially, can be overwritten by set_system_prompt
         self.system_prompt = load_prompt("system_prompt.txt", prompts_dir=self.prompts_dir)
         self.max_tokens = 16000  # default unless overridden
+        self.last_usage = None
 
     def set_system_prompt(self, content: str):
         """Allows updating the system prompt after initialization."""
@@ -110,7 +111,10 @@ class BaseModelClient:
         raw_response = ""
         # Initialize success status. Will be updated based on outcome.
         success_status = "Failure: Initialized"
-        parsed_orders_for_return = self.fallback_orders(possible_orders)  # Default to fallback
+        # Invalid output is a model error in the benchmark. Do not silently
+        # repair it or manufacture strategic default orders here; the engine
+        # applies its normal missing-order behavior after validation.
+        parsed_orders_for_return = []
 
         try:
             # Call LLM using the logging wrapper
@@ -146,38 +150,16 @@ class BaseModelClient:
                     model_error_stats[self.model_name].setdefault("order_decoding_errors", 0)
                     model_error_stats[self.model_name]["order_decoding_errors"] += 1
                 success_status = "Failure: No moves extracted"
-                # Fallback is already set to parsed_orders_for_return
+                # Leave the list empty; callers record a mechanical error.
             else:
-                # Validate or fallback
-                validated_moves, invalid_moves_list = self._validate_orders(move_list, possible_orders)
-                logger.debug(f"[{self.model_name}] Validated moves for {power_name}: {validated_moves}")
-                parsed_orders_for_return = validated_moves
-                if invalid_moves_list:
-                    # Truncate if too many invalid moves to keep log readable
-                    max_invalid_to_log = 5
-                    display_invalid_moves = invalid_moves_list[:max_invalid_to_log]
-                    omitted_count = len(invalid_moves_list) - len(display_invalid_moves)
-
-                    invalid_moves_str = ", ".join(display_invalid_moves)
-                    if omitted_count > 0:
-                        invalid_moves_str += f", ... ({omitted_count} more)"
-
-                    success_status = f"Failure: Invalid LLM Moves ({len(invalid_moves_list)}): {invalid_moves_str}"
-                    # If some moves were validated despite others being invalid, it's still not a full 'Success'
-                    # because the LLM didn't provide a fully usable set of orders without intervention/fallbacks.
-                    # The fallback_orders logic within _validate_orders might fill in missing pieces,
-                    # but the key is that the LLM *proposed* invalid moves.
-                    if not validated_moves:  # All LLM moves were invalid
-                        logger.warning(f"[{power_name}] All LLM-proposed moves were invalid. Using fallbacks. Invalid: {invalid_moves_list}")
-                    else:
-                        logger.info(f"[{power_name}] Some LLM-proposed moves were invalid. Using fallbacks/validated. Invalid: {invalid_moves_list}")
-                else:
-                    success_status = "Success"
+                parsed_orders_for_return = move_list
+                success_status = "Success"
 
         except Exception as e:
             logger.error(f"[{self.model_name}] LLM error for {power_name} in get_orders: {e}", exc_info=True)
             success_status = f"Failure: Exception ({type(e).__name__})"
-            # Fallback is already set to parsed_orders_for_return
+            # Leave empty; a provider failure is handled by the experiment
+            # supervisor rather than converted into moves.
         finally:
             # Log the attempt regardless of outcome
             if log_file_path:  # Only log if a path is provided
@@ -822,13 +804,15 @@ class OpenAIClient(BaseModelClient):
             # Check if model name starts with 'nectarine' or is in the specific list
             uses_max_completion_tokens = (
                 self.model_name in ["o4-mini", "o3-mini", "o3", "gpt-4.1"] or
-                self.model_name.startswith("nectarine")
+                self.model_name.startswith(("nectarine", "gpt-5", "gpt-6"))
             )
             
             if uses_max_completion_tokens:
                 completion_params["max_completion_tokens"] = self.max_tokens
-                # o4-mini, o3-mini, o3 only support default temperature of 1.0
-                if self.model_name in ["o4-mini", "o3-mini", "o3"]:
+                # Reasoning/new GPT models reject an explicit temperature.
+                if self.model_name.startswith(("gpt-5", "gpt-6")):
+                    pass
+                elif self.model_name in ["o4-mini", "o3-mini", "o3"]:
                     completion_params["temperature"] = 1.0
                 else:
                     completion_params["temperature"] = temperature
@@ -837,6 +821,7 @@ class OpenAIClient(BaseModelClient):
                 completion_params["temperature"] = temperature
             
             response = await self.client.chat.completions.create(**completion_params)
+            self.last_usage = response.usage.model_dump() if getattr(response, "usage", None) else None
 
             if (
                 not response
@@ -879,6 +864,21 @@ class OpenAIClient(BaseModelClient):
             raise
 
 
+class XAIClient(OpenAIClient):
+    """Native xAI client over xAI's OpenAI-compatible API."""
+
+    def __init__(self, model_name: str, prompts_dir: Optional[str] = None):
+        api_key = os.environ.get("XAI_API_KEY")
+        if not api_key:
+            raise ValueError("XAI_API_KEY missing")
+        super().__init__(
+            model_name,
+            prompts_dir=prompts_dir,
+            base_url="https://api.x.ai/v1",
+            api_key=api_key,
+        )
+
+
 class ClaudeClient(BaseModelClient):
     """
     For 'claude-3-5-sonnet-20241022', 'claude-3-5-haiku-20241022', etc.
@@ -896,13 +896,19 @@ class ClaudeClient(BaseModelClient):
                 random_seed = generate_random_seed()
                 system_prompt_content = f"{random_seed}\n\n{self.system_prompt}"
 
-            response = await self.client.messages.create(
-                model=self.model_name,
-                max_tokens=self.max_tokens,
-                system=system_prompt_content,  # system is now a top-level parameter
-                messages=[{"role": "user", "content": prompt + "\n\nPROVIDE YOUR RESPONSE BELOW:"}],
-                temperature=temperature,
-            )
+            request = {
+                "model": self.model_name,
+                "max_tokens": self.max_tokens,
+                "system": system_prompt_content,
+                "messages": [{"role": "user", "content": prompt + "\n\nPROVIDE YOUR RESPONSE BELOW:"}],
+            }
+            # Current Claude 4+ endpoints reject temperature.
+            if not self.model_name.startswith(("claude-opus-4-", "claude-sonnet-4-", "claude-haiku-4-")):
+                request["temperature"] = temperature
+            response = await self.client.messages.create(**request)
+            self.last_usage = getattr(response, "usage", None)
+            if self.last_usage is not None and hasattr(self.last_usage, "model_dump"):
+                self.last_usage = self.last_usage.model_dump()
             if not response.content or not response.content[0].text:
                 raise ValueError(f"[{self.model_name}] LLM returned an empty or invalid response.")
             return response.content[0].text.strip()
@@ -1426,6 +1432,7 @@ class Prefix(StrEnum):
     ANTHROPIC         = "anthropic"
     GEMINI            = "gemini"
     DEEPSEEK          = "deepseek"
+    XAI               = "xai"
     OPENROUTER        = "openrouter"
     TOGETHER          = "together"
 
@@ -1476,7 +1483,7 @@ def load_model_client(model_id: str, prompts_dir: Optional[str] = None) -> BaseM
             raise ValueError(
                 f"[load_model_client] unknown prefix '{spec.prefix}'. "
                 "Allowed prefixes: openai, openai-requests, openai-responses, "
-                "anthropic, gemini, deepseek, openrouter, together."
+                "anthropic, gemini, deepseek, xai, openrouter, together."
             ) from exc
 
         match pref:
@@ -1502,6 +1509,8 @@ def load_model_client(model_id: str, prompts_dir: Optional[str] = None) -> BaseM
                 return GeminiClient(spec.model, prompts_dir)
             case Prefix.DEEPSEEK:
                 return DeepSeekClient(spec.model, prompts_dir)
+            case Prefix.XAI:
+                return XAIClient(spec.model, prompts_dir)
             case Prefix.OPENROUTER:
                 return OpenRouterClient(spec.model, prompts_dir)
             case Prefix.TOGETHER:

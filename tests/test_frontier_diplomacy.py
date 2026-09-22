@@ -22,6 +22,7 @@ class RegistryTests(unittest.TestCase):
 
     def test_provider_routing_id(self):
         self.assertEqual("gemini:flash", LabConfig("google", "Google", "google", "flash").upstream_model_id())
+        self.assertEqual("xai:grok-4", LabConfig("xai", "xAI", "xai", "grok-4").upstream_model_id())
         self.assertEqual("openrouter:llama:free", LabConfig("meta", "Meta", "openrouter", "llama:free").upstream_model_id())
 
 
@@ -47,6 +48,14 @@ class SchedulerTests(unittest.TestCase):
             path = Path(directory) / "schedule.json"
             schedule.write(path)
             self.assertEqual(2, json.loads(path.read_text())["games"])
+
+    def test_complete_seven_game_block_rotates_every_power(self):
+        seven = registry(7)
+        schedule = generate_schedule(seven, 7, 5)
+        report = balance_report(schedule)
+        for model in (lab.id for lab in seven.all()):
+            self.assertEqual(7, report["appearances_by_lab"][model])
+            self.assertEqual(1, len(set(report["power_assignments_by_lab"][model].values())))
 
 
 if __name__ == "__main__":

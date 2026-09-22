@@ -30,6 +30,42 @@ logging.basicConfig(level=logging.INFO)
 load_dotenv()
 
 
+# A game deliberately asks several powers to act at the same time.  Some
+# provider accounts, notably OpenRouter keys with a small in-flight credit
+# allowance, reject otherwise valid simultaneous requests.  Keep the guard
+# local to this process/game so it cannot serialize unrelated experiments.
+_provider_semaphores: dict[str, asyncio.Semaphore] = {}
+
+
+def _provider_key(client) -> str:
+    """Return the routing provider for a legacy model client."""
+    name = type(client).__name__.lower()
+    if "xai" in name:
+        return "xai"
+    if "router" in name:
+        return "openrouter"
+    if "claude" in name or "anthropic" in name:
+        return "anthropic"
+    if "gemini" in name:
+        return "google"
+    if "deepseek" in name:
+        return "deepseek"
+    return "openai"
+
+
+def _provider_semaphore(client) -> asyncio.Semaphore:
+    provider = _provider_key(client)
+    semaphore = _provider_semaphores.get(provider)
+    if semaphore is None:
+        # OpenRouter's budget is assessed over concurrently outstanding
+        # requests, so one request at a time is the safe portable default.
+        # Other providers retain bounded parallelism across the seven powers.
+        limit = 1 if provider == "openrouter" else 4
+        semaphore = asyncio.Semaphore(limit)
+        _provider_semaphores[provider] = semaphore
+    return semaphore
+
+
 def atomic_write_json(data: dict, filepath: str):
     """Writes a dictionary to a JSON file atomically."""
     try:
@@ -430,18 +466,24 @@ async def run_llm_and_log(
     """
     last_exception: Optional[Exception] = None
 
+    from frontier_diplomacy.telemetry import CallAccounting
     for attempt in range(attempts):
+        accounting = CallAccounting(client, prompt, power_name, phase, response_type)
         try:
-            raw_response = await client.generate_response(prompt, temperature=temperature)
+            async with _provider_semaphore(client):
+                accounting.reserve()
+                raw_response = await client.generate_response(prompt, temperature=temperature)
 
             # The clients now raise ValueError, but this is a final safeguard.
             if not raw_response or not raw_response.strip():
                 raise ValueError("LLM client returned an empty or whitespace-only string.")
 
             # Success!
+            accounting.finish("success")
             return raw_response
 
         except RETRYABLE_EXCEPTIONS as e:
+            accounting.finish("failed")
             last_exception = e
             if attempt == attempts - 1:
                 # This was the last attempt, so we'll fall through to the final error handling.
@@ -456,12 +498,24 @@ async def run_llm_and_log(
             await asyncio.sleep(delay)
 
         except (KeyboardInterrupt, asyncio.CancelledError):
+            accounting.finish("unknown")
             # If the user hits Ctrl-C or the task is cancelled, stop immediately.
             logger.warning(f"LLM call for {client.model_name}/{power_name} was cancelled or interrupted by user.")
             raise  # Re-raise to allow the application to exit cleanly.
 
         except Exception as e:
+            accounting.finish("failed")
             last_exception = e
+            # A payment/credit-limit response cannot be repaired by an
+            # immediate retry.  Preserve the error for the supervisor instead
+            # of issuing four additional paid-or-rejected attempts.
+            if getattr(e, "status_code", None) == 402:
+                logger.error(
+                    "Provider credit limit for %s/%s; not retrying this call.",
+                    client.model_name,
+                    power_name,
+                )
+                break
             if attempt == attempts - 1:
                 # This was the last attempt, so we'll fall through to the final error handling.
                 break
